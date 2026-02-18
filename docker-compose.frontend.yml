@@ -1,0 +1,35 @@
+# Frontend VM - Docker Compose
+# Bu dosyayı FRONTEND sanal makinesinde kullanın
+
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.production
+    container_name: phishing-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://10.0.0.2:8080}
+    volumes:
+      # SSL sertifikaları için (production'da kullanılacak)
+      - ./ssl:/etc/nginx/ssl:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    driver: bridge
