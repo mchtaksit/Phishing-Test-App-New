@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
+import { testConnection, closePool } from './database.js';
 import {
   insertEvent,
   getCampaigns,
@@ -19,7 +20,7 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: config.corsOrigin,
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'DELETE'],
   allowedHeaders: ['Content-Type'],
 }));
 
@@ -37,30 +38,45 @@ app.use(limiter);
 app.use(express.json({ limit: '10kb' }));
 
 // Health check
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ ok: true });
+app.get('/health', async (_req: Request, res: Response) => {
+  try {
+    await testConnection();
+    res.json({ ok: true, database: 'connected' });
+  } catch {
+    res.status(503).json({ ok: false, database: 'disconnected' });
+  }
 });
 
 // ============ CAMPAIGNS ============
 
 // List all campaigns
-app.get('/campaigns', (_req: Request, res: Response) => {
-  const campaigns = getCampaigns();
-  res.json(campaigns);
+app.get('/campaigns', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const campaigns = await getCampaigns();
+    res.json(campaigns);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Get single campaign with stats and events
-app.get('/campaigns/:id', (req: Request, res: Response) => {
-  const campaign = getCampaign(req.params.id);
-  if (!campaign) {
-    res.status(404).json({ error: 'Campaign not found' });
-    return;
+app.get('/campaigns/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const campaign = await getCampaign(req.params.id);
+    if (!campaign) {
+      res.status(404).json({ error: 'Campaign not found' });
+      return;
+    }
+
+    const [stats, events] = await Promise.all([
+      getCampaignStats(campaign.id),
+      getEventsByCampaign(campaign.id),
+    ]);
+
+    res.json({ ...campaign, stats, events });
+  } catch (err) {
+    next(err);
   }
-
-  const stats = getCampaignStats(campaign.id);
-  const events = getEventsByCampaign(campaign.id);
-
-  res.json({ ...campaign, stats, events });
 });
 
 // Create new campaign
@@ -80,14 +96,14 @@ function isValidCreateCampaign(body: unknown): body is CreateCampaignBody {
   );
 }
 
-app.post('/campaigns', (req: Request, res: Response, next: NextFunction) => {
+app.post('/campaigns', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!isValidCreateCampaign(req.body)) {
       res.status(400).json({ error: 'Invalid request body' });
       return;
     }
 
-    const campaign = createCampaign({
+    const campaign = await createCampaign({
       name: req.body.name.trim(),
       description: (req.body.description || '').trim(),
       targetCount: req.body.targetCount || 10,
@@ -100,13 +116,17 @@ app.post('/campaigns', (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Start campaign
-app.post('/campaigns/:id/start', (req: Request, res: Response) => {
-  const campaign = startCampaign(req.params.id);
-  if (!campaign) {
-    res.status(404).json({ error: 'Campaign not found' });
-    return;
+app.post('/campaigns/:id/start', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const campaign = await startCampaign(req.params.id);
+    if (!campaign) {
+      res.status(404).json({ error: 'Campaign not found or already started' });
+      return;
+    }
+    res.json(campaign);
+  } catch (err) {
+    next(err);
   }
-  res.json(campaign);
 });
 
 // ============ EVENTS ============
@@ -135,7 +155,7 @@ function isValidEventBody(body: unknown): body is EventBody {
   );
 }
 
-app.post('/events', (req: Request, res: Response, next: NextFunction) => {
+app.post('/events', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!isValidEventBody(req.body)) {
       res.status(400).json({ error: 'Invalid request body' });
@@ -143,7 +163,10 @@ app.post('/events', (req: Request, res: Response, next: NextFunction) => {
     }
 
     const { type, campaignId, recipientToken } = req.body;
-    insertEvent(type, campaignId, recipientToken);
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('User-Agent');
+
+    await insertEvent(type, campaignId, recipientToken, ipAddress, userAgent);
     res.status(201).json({ success: true });
   } catch (err) {
     next(err);
@@ -159,7 +182,32 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-// Start server
-app.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
-});
+// ============ SERVER START ============
+
+async function startServer() {
+  // Test database connection
+  const dbConnected = await testConnection();
+  if (!dbConnected) {
+    console.error('Failed to connect to database. Exiting...');
+    process.exit(1);
+  }
+
+  // Start server
+  const server = app.listen(config.port, () => {
+    console.log(`Server running on port ${config.port}`);
+  });
+
+  // Graceful shutdown
+  const shutdown = async () => {
+    console.log('Shutting down...');
+    server.close(async () => {
+      await closePool();
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}
+
+startServer();
