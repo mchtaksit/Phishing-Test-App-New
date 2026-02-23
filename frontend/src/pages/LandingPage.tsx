@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -15,7 +15,7 @@ export function LandingPage() {
   });
 
   // Sayfa yüklendiğinde "clicked" event gönder
-  useState(() => {
+  useEffect(() => {
     fetch(`${API_BASE_URL}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -25,7 +25,7 @@ export function LandingPage() {
         recipientToken: token,
       }),
     }).catch(() => {});
-  });
+  }, [campaignId, token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

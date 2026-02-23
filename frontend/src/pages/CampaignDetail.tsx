@@ -63,11 +63,10 @@ export function CampaignDetail() {
           {campaign.status === 'draft' && 'Taslak'}
           {campaign.status === 'active' && 'Aktif'}
           {campaign.status === 'completed' && 'Tamamlandı'}
+          {campaign.status === 'paused' && 'Duraklatıldı'}
         </span>
         <span>Oluşturulma: {new Date(campaign.createdAt).toLocaleString('tr-TR')}</span>
-        {campaign.startedAt && (
-          <span>Başlangıç: {new Date(campaign.startedAt).toLocaleString('tr-TR')}</span>
-        )}
+        <span>Güncelleme: {new Date(campaign.updatedAt).toLocaleString('tr-TR')}</span>
       </div>
 
       <div className="stats-grid">

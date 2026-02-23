@@ -6,5 +6,16 @@ export const config = {
   port: parseInt(process.env.PORT || '8080', 10),
   corsOrigin: process.env.CORS_ORIGIN?.split(',').map(s => s.trim()) || [],
   isProduction: process.env.NODE_ENV === 'production',
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://phishing:phishing@localhost:5432/phishing_db',
+  databaseUrl: process.env.DATABASE_URL,
+  useMemoryDb: process.env.USE_MEMORY_DB === 'true' || !process.env.DATABASE_URL,
+
+  // LDAP Configuration
+  ldap: {
+    url: process.env.LDAP_URL || 'ldap://localhost:389',
+    adminDn: process.env.LDAP_ADMIN_DN || 'cn=admin,dc=university,dc=edu,dc=tr',
+    adminPassword: process.env.LDAP_ADMIN_PASSWORD || 'admin',
+    baseDn: process.env.LDAP_BASE_DN || 'dc=university,dc=edu,dc=tr',
+    userFilter: process.env.LDAP_USER_FILTER || '(objectClass=inetOrgPerson)',
+    usersOu: process.env.LDAP_USERS_OU || 'ou=users',
+  },
 };

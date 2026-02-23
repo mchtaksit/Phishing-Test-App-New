@@ -80,6 +80,7 @@ export function Dashboard() {
                       {campaign.status === 'draft' && 'Taslak'}
                       {campaign.status === 'active' && 'Aktif'}
                       {campaign.status === 'completed' && 'Tamamlandı'}
+                      {campaign.status === 'paused' && 'Duraklatıldı'}
                     </span>
                   </td>
                   <td>{campaign.targetCount}</td>

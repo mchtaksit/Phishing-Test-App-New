@@ -1,5 +1,6 @@
-export type CampaignStatus = 'draft' | 'active' | 'completed';
+export type CampaignStatus = 'draft' | 'active' | 'completed' | 'paused';
 export type EventType = 'clicked' | 'submitted';
+export type RecipientStatus = 'pending' | 'sent' | 'clicked' | 'submitted' | 'failed';
 export type Frequency = 'once' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
 export type SendingMode = 'all' | 'spread';
 export type DifficultyRating = 1 | 2 | 3 | 4 | 5;
@@ -11,15 +12,16 @@ export interface Campaign {
   status: CampaignStatus;
   targetCount: number;
   createdAt: string;
-  startedAt?: string;
-  completedAt?: string;
+  updatedAt: string;
 }
 
 export interface CampaignEvent {
-  id: number;
+  id: string;
   type: EventType;
   campaignId: string;
   recipientToken: string;
+  ipAddress?: string;
+  userAgent?: string;
   createdAt: string;
 }
 
@@ -37,6 +39,21 @@ export interface CampaignDetail extends Campaign {
   events: CampaignEvent[];
 }
 
+export interface Recipient {
+  id: string;
+  campaignId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  token: string;
+  status: RecipientStatus;
+  sentAt?: string;
+  clickedAt?: string;
+  submittedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UserGroup {
   id: string;
   name: string;
@@ -46,12 +63,57 @@ export interface UserGroup {
 export interface EmailTemplate {
   id: string;
   name: string;
-  category: string;
+  subject: string;
+  body: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LandingPage {
   id: string;
   name: string;
+  html: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardStats {
+  totalCampaigns: number;
+  activeCampaigns: number;
+  completedCampaigns: number;
+  draftCampaigns: number;
+  pausedCampaigns: number;
+  totalRecipients: number;
+  totalEmailsSent: number;
+  totalClicks: number;
+  totalSubmissions: number;
+  overallClickRate: number;
+  overallSubmitRate: number;
+}
+
+// LDAP Types
+export interface LdapUser {
+  dn: string;
+  cn: string;
+  sn: string;
+  mail: string;
+  uid?: string;
+  givenName?: string;
+}
+
+export interface LdapSyncResult {
+  success: boolean;
+  totalFound: number;
+  synced: number;
+  skipped: number;
+  errors: number;
+  details: Array<{
+    email: string;
+    status: 'synced' | 'skipped' | 'error';
+    message?: string;
+  }>;
 }
 
 export interface CampaignFormData {

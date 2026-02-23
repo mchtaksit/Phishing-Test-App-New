@@ -1,0 +1,106 @@
+# Base DN
+dn: dc=university,dc=edu,dc=tr
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: University
+dc: university
+
+# Admin user (already created by container)
+# dn: cn=admin,dc=university,dc=edu,dc=tr
+
+# Organizational Units
+dn: ou=users,dc=university,dc=edu,dc=tr
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=university,dc=edu,dc=tr
+objectClass: organizationalUnit
+ou: groups
+
+# Sample Users
+dn: uid=ahmet.yilmaz,ou=users,dc=university,dc=edu,dc=tr
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: ahmet.yilmaz
+sn: Yilmaz
+givenName: Ahmet
+cn: Ahmet Yilmaz
+displayName: Ahmet Yilmaz
+uidNumber: 1001
+gidNumber: 1001
+userPassword: password123
+homeDirectory: /home/ahmet.yilmaz
+mail: ahmet.yilmaz@university.edu.tr
+
+dn: uid=mehmet.demir,ou=users,dc=university,dc=edu,dc=tr
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: mehmet.demir
+sn: Demir
+givenName: Mehmet
+cn: Mehmet Demir
+displayName: Mehmet Demir
+uidNumber: 1002
+gidNumber: 1001
+userPassword: password123
+homeDirectory: /home/mehmet.demir
+mail: mehmet.demir@university.edu.tr
+
+dn: uid=ayse.kaya,ou=users,dc=university,dc=edu,dc=tr
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: ayse.kaya
+sn: Kaya
+givenName: Ayse
+cn: Ayse Kaya
+displayName: Ayse Kaya
+uidNumber: 1003
+gidNumber: 1001
+userPassword: password123
+homeDirectory: /home/ayse.kaya
+mail: ayse.kaya@university.edu.tr
+
+dn: uid=fatma.ozturk,ou=users,dc=university,dc=edu,dc=tr
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: fatma.ozturk
+sn: Ozturk
+givenName: Fatma
+cn: Fatma Ozturk
+displayName: Fatma Ozturk
+uidNumber: 1004
+gidNumber: 1001
+userPassword: password123
+homeDirectory: /home/fatma.ozturk
+mail: fatma.ozturk@university.edu.tr
+
+dn: uid=ali.celik,ou=users,dc=university,dc=edu,dc=tr
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: ali.celik
+sn: Celik
+givenName: Ali
+cn: Ali Celik
+displayName: Ali Celik
+uidNumber: 1005
+gidNumber: 1001
+userPassword: password123
+homeDirectory: /home/ali.celik
+mail: ali.celik@university.edu.tr
+
+# Groups
+dn: cn=users,ou=groups,dc=university,dc=edu,dc=tr
+objectClass: posixGroup
+cn: users
+gidNumber: 1001
+memberUid: ahmet.yilmaz
+memberUid: mehmet.demir
+memberUid: ayse.kaya
+memberUid: fatma.ozturk
+memberUid: ali.celik

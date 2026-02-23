@@ -1,0 +1,43 @@
+import { config } from '../config.js';
+
+let pool: import('pg').Pool | null = null;
+
+export async function getPool() {
+  if (!pool && !config.useMemoryDb) {
+    const pg = await import('pg');
+    pool = new pg.default.Pool({
+      connectionString: config.databaseUrl,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    });
+  }
+  return pool;
+}
+
+export async function testConnection(): Promise<boolean> {
+  if (config.useMemoryDb) {
+    console.log('Using in-memory database');
+    return true;
+  }
+
+  try {
+    const p = await getPool();
+    if (!p) return false;
+    const client = await p.connect();
+    await client.query('SELECT 1');
+    client.release();
+    console.log('PostgreSQL connection successful');
+    return true;
+  } catch (error) {
+    console.error('PostgreSQL connection failed:', error);
+    return false;
+  }
+}
+
+export async function closePool(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    console.log('Database pool closed');
+  }
+}
