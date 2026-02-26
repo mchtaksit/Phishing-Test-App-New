@@ -1,14 +1,7 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { api } from '../api';
-import type { Frequency, SendingMode } from '../types';
-
-const TIMEZONES = [
-  { value: 'Europe/Istanbul', label: '(GMT+03:00) Istanbul' },
-  { value: 'Europe/London', label: '(GMT+00:00) London' },
-  { value: 'America/New_York', label: '(GMT-05:00) Eastern Time (US & Canada)' },
-  { value: 'America/Los_Angeles', label: '(GMT-08:00) Pacific Time (US & Canada)' },
-];
+import type { Frequency, SendingMode, EmailTemplate, LandingPage } from '../types';
 
 const CATEGORIES = [
   { value: 'it', label: 'IT' },
@@ -24,13 +17,6 @@ const DOMAINS = [
   { value: 'mail-update.org', label: 'mail-update.org' },
 ];
 
-const LANDING_PAGES = [
-  { value: 'default', label: '-- Varsayılan --' },
-  { value: 'login', label: 'Sahte Giriş Sayfası' },
-  { value: 'password', label: 'Şifre Sıfırlama' },
-  { value: 'survey', label: 'Anket Sayfası' },
-];
-
 const WEEKDAYS = [
   { value: 'sun', label: 'Paz' },
   { value: 'mon', label: 'Pzt' },
@@ -43,8 +29,11 @@ const WEEKDAYS = [
 
 export function CampaignNew() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [landingPages, setLandingPages] = useState<LandingPage[]>([]);
 
   const [form, setForm] = useState({
     name: '',
@@ -62,7 +51,7 @@ export function CampaignNew() {
     trackActivityDays: 7,
     category: 'it',
     templateMode: 'random' as 'random' | 'specific',
-    difficultyRating: null as number | null,
+    templateId: '',
     phishDomain: 'random',
     landingPageId: 'default',
     addClickersToGroup: '',
@@ -72,6 +61,35 @@ export function CampaignNew() {
   const updateForm = <K extends keyof typeof form>(key: K, value: typeof form[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [templatesData, landingPagesData] = await Promise.all([
+          api.getTemplates(),
+          api.getLandingPages(),
+        ]);
+        setTemplates(templatesData);
+        setLandingPages(landingPagesData);
+
+        // Pre-select landing page from URL parameter if provided
+        const landingPageId = searchParams.get('landingPageId');
+        if (landingPageId) {
+          updateForm('landingPageId', landingPageId);
+        }
+
+        // Pre-select template from URL parameter if provided
+        const templateId = searchParams.get('templateId');
+        if (templateId) {
+          updateForm('templateMode', 'specific');
+          updateForm('templateId', templateId);
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      }
+    };
+    fetchData();
+  }, [searchParams]);
 
   const toggleBusinessDay = (day: string) => {
     setForm(prev => ({
@@ -96,8 +114,26 @@ export function CampaignNew() {
     try {
       const campaign = await api.createCampaign({
         name: form.name,
-        description: `Frequency: ${form.frequency}, Category: ${form.category}`,
-        targetCount: 100,
+        description: '',
+        targetCount: 0,
+        frequency: form.frequency,
+        startDate: form.startDate,
+        startTime: form.startTime,
+        timezone: form.timezone,
+        sendingMode: form.sendingMode,
+        spreadDays: form.spreadDays,
+        spreadUnit: form.spreadUnit,
+        businessHoursStart: form.businessHoursStart,
+        businessHoursEnd: form.businessHoursEnd,
+        businessDays: form.businessDays,
+        trackActivityDays: form.trackActivityDays,
+        category: form.category,
+        templateMode: form.templateMode,
+        templateId: form.templateMode === 'specific' ? form.templateId : undefined,
+        phishDomain: form.phishDomain,
+        landingPageId: form.landingPageId || undefined,
+        addClickersToGroup: form.addClickersToGroup || undefined,
+        sendReportEmail: form.sendReportEmail,
       });
       navigate(`/campaigns/${campaign.id}`);
     } catch {
@@ -202,15 +238,6 @@ export function CampaignNew() {
                 onChange={e => updateForm('startTime', e.target.value)}
                 disabled={loading}
               />
-              <select
-                value={form.timezone}
-                onChange={e => updateForm('timezone', e.target.value)}
-                disabled={loading}
-              >
-                {TIMEZONES.map(tz => (
-                  <option key={tz.value} value={tz.value}>{tz.label}</option>
-                ))}
-              </select>
             </div>
           </div>
         </div>
@@ -349,30 +376,23 @@ export function CampaignNew() {
             </div>
           </div>
 
-          <div className="form-row">
-            <label>Zorluk Derecesi</label>
-            <div className="difficulty-rating">
-              {[1, 2, 3, 4, 5].map(rating => (
-                <button
-                  key={rating}
-                  type="button"
-                  className={`rating-btn ${form.difficultyRating === rating ? 'active' : ''}`}
-                  onClick={() => updateForm('difficultyRating', form.difficultyRating === rating ? null : rating)}
-                  disabled={loading}
-                >
-                  {rating}
-                </button>
-              ))}
-              <span className="rating-label">
-                {form.difficultyRating === null && 'Tümü'}
-                {form.difficultyRating === 1 && 'Çok Kolay'}
-                {form.difficultyRating === 2 && 'Kolay'}
-                {form.difficultyRating === 3 && 'Orta'}
-                {form.difficultyRating === 4 && 'Zor'}
-                {form.difficultyRating === 5 && 'Çok Zor'}
-              </span>
+          {form.templateMode === 'specific' && (
+            <div className="form-row">
+              <label>E-posta Şablonu</label>
+              <select
+                value={form.templateId}
+                onChange={e => updateForm('templateId', e.target.value)}
+                disabled={loading}
+              >
+                <option value="">-- Şablon Seçin --</option>
+                {templates.map(template => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} {template.isDefault ? '(Varsayılan)' : ''}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Phishing Ayarları */}
@@ -399,8 +419,11 @@ export function CampaignNew() {
               onChange={e => updateForm('landingPageId', e.target.value)}
               disabled={loading}
             >
-              {LANDING_PAGES.map(lp => (
-                <option key={lp.value} value={lp.value}>{lp.label}</option>
+              <option value="">-- Landing Page Seçin --</option>
+              {landingPages.map(lp => (
+                <option key={lp.id} value={lp.id}>
+                  {lp.name} {lp.isDefault ? '(Varsayılan)' : ''}
+                </option>
               ))}
             </select>
           </div>

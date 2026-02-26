@@ -1,132 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
+import type { EmailTemplate } from '../types';
 
-interface EmailTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  description: string;
-  category: string;
-  difficulty: number;
-  thumbnail: string;
-}
+// Extract category from template name
+const getCategoryFromName = (name: string): string => {
+  if (name.includes('IT') || name.includes('VPN')) return 'IT';
+  if (name.includes('HR') || name.includes('İK')) return 'HR';
+  if (name.includes('Finans') || name.includes('Ödeme')) return 'Finans';
+  if (name.includes('Genel') || name.includes('Güvenlik')) return 'Genel';
+  return 'Genel';
+};
 
-const TEMPLATES: EmailTemplate[] = [
-  {
-    id: 'it-password-reset',
-    name: 'IT Şifre Sıfırlama',
-    subject: 'Acil: Şifrenizi Sıfırlamanız Gerekmektedir',
-    description: 'IT departmanından gelen şifre sıfırlama talebi',
-    category: 'IT',
-    difficulty: 2,
-    thumbnail: '🔐',
-  },
-  {
-    id: 'hr-payroll',
-    name: 'Maaş Bordrosu',
-    subject: 'Maaş Bordronuz Hazır - İncelemeniz Gerekmektedir',
-    description: 'İK departmanından maaş bordrosu bildirimi',
-    category: 'HR',
-    difficulty: 3,
-    thumbnail: '💰',
-  },
-  {
-    id: 'microsoft-365',
-    name: 'Microsoft 365 Uyarısı',
-    subject: 'Microsoft 365: Hesabınız Askıya Alınacak',
-    description: 'Microsoft hesap güvenlik uyarısı',
-    category: 'IT',
-    difficulty: 4,
-    thumbnail: '🪟',
-  },
-  {
-    id: 'shipping-notification',
-    name: 'Kargo Bildirimi',
-    subject: 'Kargonuz Teslim Edilemedi - Adres Onayı Gerekli',
-    description: 'Sahte kargo takip bildirimi',
-    category: 'Genel',
-    difficulty: 2,
-    thumbnail: '📦',
-  },
-  {
-    id: 'ceo-urgent',
-    name: 'CEO Acil Talep',
-    subject: 'Acil - Bugün İçinde Yanıt Gerekli',
-    description: 'CEO kimliğine bürünme saldırısı',
-    category: 'Yönetim',
-    difficulty: 5,
-    thumbnail: '👔',
-  },
-  {
-    id: 'invoice-payment',
-    name: 'Fatura Ödeme',
-    subject: 'Ödenmemiş Fatura - Son Ödeme Tarihi Yaklaşıyor',
-    description: 'Sahte fatura ödeme talebi',
-    category: 'Finans',
-    difficulty: 3,
-    thumbnail: '🧾',
-  },
-  {
-    id: 'shared-document',
-    name: 'Paylaşılan Döküman',
-    subject: 'Sizinle Bir Döküman Paylaşıldı',
-    description: 'OneDrive/Google Drive paylaşım bildirimi',
-    category: 'IT',
-    difficulty: 3,
-    thumbnail: '📄',
-  },
-  {
-    id: 'meeting-invite',
-    name: 'Toplantı Daveti',
-    subject: 'Toplantı Daveti: Acil Proje Değerlendirmesi',
-    description: 'Sahte takvim daveti',
-    category: 'Genel',
-    difficulty: 2,
-    thumbnail: '📅',
-  },
-  {
-    id: 'security-alert',
-    name: 'Güvenlik Uyarısı',
-    subject: 'Şüpheli Giriş Tespit Edildi - Hemen Doğrulayın',
-    description: 'Sahte güvenlik uyarısı',
-    category: 'IT',
-    difficulty: 4,
-    thumbnail: '🚨',
-  },
-  {
-    id: 'bonus-announcement',
-    name: 'Bonus Duyurusu',
-    subject: 'Tebrikler! Yıllık Bonus Hak Kazandınız',
-    description: 'Sahte bonus/ödül bildirimi',
-    category: 'HR',
-    difficulty: 3,
-    thumbnail: '🎁',
-  },
-];
-
-const CATEGORIES = ['Tümü', 'IT', 'HR', 'Finans', 'Yönetim', 'Genel'];
+// Get emoji based on category
+const getCategoryEmoji = (category: string): string => {
+  const emojis: Record<string, string> = {
+    'IT': '🔐',
+    'HR': '💼',
+    'Finans': '💰',
+    'Genel': '📧',
+  };
+  return emojis[category] || '📧';
+};
 
 export function EmailTemplates() {
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredTemplates = TEMPLATES.filter(template => {
-    const matchesCategory = selectedCategory === 'Tümü' || template.category === selectedCategory;
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const data = await api.getTemplates();
+        setTemplates(data);
+      } catch (err) {
+        console.error('Failed to fetch templates:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTemplates();
+  }, []);
+
+  // Extract unique categories from templates
+  const categories = ['Tümü', ...Array.from(new Set(templates.map(t => getCategoryFromName(t.name))))];
+
+  const filteredTemplates = templates.filter(template => {
+    const category = getCategoryFromName(template.name);
+    const matchesCategory = selectedCategory === 'Tümü' || category === selectedCategory;
     const matchesSearch =
       template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description.toLowerCase().includes(searchQuery.toLowerCase());
+      template.subject.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  const getDifficultyLabel = (level: number) => {
-    const labels = ['', 'Çok Kolay', 'Kolay', 'Orta', 'Zor', 'Çok Zor'];
-    return labels[level] || '';
-  };
-
-  const getDifficultyColor = (level: number) => {
-    const colors = ['', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'];
-    return colors[level] || '#6b7280';
+  // Strip HTML tags from body to create a description
+  const getDescription = (body: string): string => {
+    const text = body.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    return text.length > 100 ? text.substring(0, 100) + '...' : text;
   };
 
   return (
@@ -152,7 +86,7 @@ export function EmailTemplates() {
           />
         </div>
         <div className="category-tabs">
-          {CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <button
               key={cat}
               className={`tab ${selectedCategory === cat ? 'active' : ''}`}
@@ -166,41 +100,51 @@ export function EmailTemplates() {
 
       {/* Templates List */}
       <div className="email-templates-grid">
-        {filteredTemplates.map(template => (
-          <div
-            key={template.id}
-            className={`email-template-card ${selectedTemplate?.id === template.id ? 'selected' : ''}`}
-            onClick={() => setSelectedTemplate(template)}
-          >
-            <div className="template-icon">
-              <span>{template.thumbnail}</span>
-            </div>
-            <div className="template-content">
-              <div className="template-header">
-                <h3>{template.name}</h3>
-                <span
-                  className="difficulty-badge"
-                  style={{ backgroundColor: getDifficultyColor(template.difficulty) }}
-                >
-                  {getDifficultyLabel(template.difficulty)}
-                </span>
+        {loading ? (
+          <div className="loading-state">Şablonlar yükleniyor...</div>
+        ) : (
+          filteredTemplates.map(template => {
+            const category = getCategoryFromName(template.name);
+            const emoji = getCategoryEmoji(category);
+            return (
+              <div
+                key={template.id}
+                className={`email-template-card ${selectedTemplate?.id === template.id ? 'selected' : ''}`}
+                onClick={() => setSelectedTemplate(template)}
+              >
+                <div className="template-icon">
+                  <span>{emoji}</span>
+                </div>
+                <div className="template-content">
+                  <div className="template-header">
+                    <h3>{template.name}</h3>
+                    {template.isDefault && (
+                      <span className="difficulty-badge" style={{ backgroundColor: '#22c55e' }}>
+                        Varsayılan
+                      </span>
+                    )}
+                  </div>
+                  <p className="template-subject">{template.subject}</p>
+                  <p className="template-desc">{getDescription(template.body)}</p>
+                  <div className="template-meta">
+                    <span className="template-category">{category}</span>
+                  </div>
+                </div>
+                <div className="template-actions-side">
+                  <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); setSelectedTemplate(template); }}>
+                    Önizle
+                  </button>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/campaigns/new?templateId=${template.id}`); }}
+                  >
+                    Kullan
+                  </button>
+                </div>
               </div>
-              <p className="template-subject">{template.subject}</p>
-              <p className="template-desc">{template.description}</p>
-              <div className="template-meta">
-                <span className="template-category">{template.category}</span>
-              </div>
-            </div>
-            <div className="template-actions-side">
-              <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); setSelectedTemplate(template); }}>
-                Önizle
-              </button>
-              <button className="btn btn-sm btn-primary">
-                Kullan
-              </button>
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
 
       {filteredTemplates.length === 0 && (
@@ -218,12 +162,11 @@ export function EmailTemplates() {
             <div className="email-preview">
               <div className="email-preview-header">
                 <h3>E-posta Önizleme</h3>
-                <span
-                  className="difficulty-badge"
-                  style={{ backgroundColor: getDifficultyColor(selectedTemplate.difficulty) }}
-                >
-                  Zorluk: {getDifficultyLabel(selectedTemplate.difficulty)}
-                </span>
+                {selectedTemplate.isDefault && (
+                  <span className="difficulty-badge" style={{ backgroundColor: '#22c55e' }}>
+                    Varsayılan Şablon
+                  </span>
+                )}
               </div>
 
               <div className="email-mock">
@@ -234,7 +177,7 @@ export function EmailTemplates() {
                   </div>
                   <div className="email-field">
                     <span className="field-label">Kime:</span>
-                    <span className="field-value">{'{{alici_email}}'}</span>
+                    <span className="field-value">{'{{email}}'}</span>
                   </div>
                   <div className="email-field">
                     <span className="field-label">Konu:</span>
@@ -242,29 +185,7 @@ export function EmailTemplates() {
                   </div>
                 </div>
 
-                <div className="email-mock-body">
-                  <p>Sayın {'{{alici_adi}}'} {'{{alici_soyadi}}'},</p>
-                  <br />
-                  <p>
-                    Sistemlerimizde hesabınızla ilgili olağandışı bir aktivite tespit edilmiştir.
-                    Güvenliğiniz için hesabınızı doğrulamanız gerekmektedir.
-                  </p>
-                  <br />
-                  <p>
-                    Lütfen aşağıdaki bağlantıya tıklayarak hesabınızı doğrulayın:
-                  </p>
-                  <br />
-                  <div className="email-cta">
-                    <a href="#" className="email-button">Hesabımı Doğrula</a>
-                  </div>
-                  <br />
-                  <p>
-                    Bu işlemi 24 saat içinde tamamlamazsanız, hesabınız geçici olarak askıya alınacaktır.
-                  </p>
-                  <br />
-                  <p>Saygılarımızla,</p>
-                  <p><strong>IT Güvenlik Ekibi</strong></p>
-                </div>
+                <div className="email-mock-body" dangerouslySetInnerHTML={{ __html: selectedTemplate.body }} />
               </div>
 
               <div className="preview-indicators">
@@ -293,16 +214,16 @@ export function EmailTemplates() {
       {/* Stats Section */}
       <div className="templates-stats">
         <div className="stat-item">
-          <div className="stat-number">{TEMPLATES.length}</div>
+          <div className="stat-number">{templates.length}</div>
           <div className="stat-text">Toplam Şablon</div>
         </div>
         <div className="stat-item">
-          <div className="stat-number">{CATEGORIES.length - 1}</div>
+          <div className="stat-number">{categories.length - 1}</div>
           <div className="stat-text">Kategori</div>
         </div>
         <div className="stat-item">
-          <div className="stat-number">5</div>
-          <div className="stat-text">Zorluk Seviyesi</div>
+          <div className="stat-number">{templates.filter(t => t.isDefault).length}</div>
+          <div className="stat-text">Varsayılan Şablon</div>
         </div>
       </div>
     </div>

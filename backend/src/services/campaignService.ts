@@ -17,8 +17,7 @@ export async function getCampaigns(): Promise<Campaign[]> {
   if (!p) return [];
 
   const result = await p.query(
-    `SELECT id, name, description, status, target_count, created_at, updated_at
-     FROM campaigns ORDER BY created_at DESC`
+    `SELECT * FROM campaigns ORDER BY created_at DESC`
   );
 
   return result.rows.map((row) => ({
@@ -27,6 +26,26 @@ export async function getCampaigns(): Promise<Campaign[]> {
     description: row.description,
     status: row.status,
     targetCount: row.target_count,
+    frequency: row.frequency,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    timezone: row.timezone,
+    sendingMode: row.sending_mode,
+    spreadDays: row.spread_days,
+    spreadUnit: row.spread_unit,
+    businessHoursStart: row.business_hours_start,
+    businessHoursEnd: row.business_hours_end,
+    businessDays: JSON.parse(row.business_days || '[]'),
+    trackActivityDays: row.track_activity_days,
+    category: row.category,
+    templateMode: row.template_mode,
+    templateId: row.template_id,
+    phishDomain: row.phish_domain,
+    landingPageId: row.landing_page_id,
+    addClickersToGroup: row.add_clickers_to_group,
+    sendReportEmail: row.send_report_email,
+    nextRunAt: row.next_run_at,
+    lastRunAt: row.last_run_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -45,8 +64,7 @@ export async function getCampaign(id: string): Promise<Campaign | null> {
   if (!p) return null;
 
   const result = await p.query(
-    `SELECT id, name, description, status, target_count, created_at, updated_at
-     FROM campaigns WHERE id = $1`,
+    `SELECT * FROM campaigns WHERE id = $1`,
     [id]
   );
 
@@ -59,6 +77,26 @@ export async function getCampaign(id: string): Promise<Campaign | null> {
     description: row.description,
     status: row.status,
     targetCount: row.target_count,
+    frequency: row.frequency,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    timezone: row.timezone,
+    sendingMode: row.sending_mode,
+    spreadDays: row.spread_days,
+    spreadUnit: row.spread_unit,
+    businessHoursStart: row.business_hours_start,
+    businessHoursEnd: row.business_hours_end,
+    businessDays: JSON.parse(row.business_days || '[]'),
+    trackActivityDays: row.track_activity_days,
+    category: row.category,
+    templateMode: row.template_mode,
+    templateId: row.template_id,
+    phishDomain: row.phish_domain,
+    landingPageId: row.landing_page_id,
+    addClickersToGroup: row.add_clickers_to_group,
+    sendReportEmail: row.send_report_email,
+    nextRunAt: row.next_run_at,
+    lastRunAt: row.last_run_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -70,18 +108,79 @@ export async function getCampaign(id: string): Promise<Campaign | null> {
 
 export async function createCampaign(data: {
   name: string;
-  description: string;
-  targetCount: number;
+  description?: string;
+  targetCount?: number;
+  frequency?: string;
+  startDate?: string;
+  startTime?: string;
+  timezone?: string;
+  sendingMode?: string;
+  spreadDays?: number;
+  spreadUnit?: string;
+  businessHoursStart?: string;
+  businessHoursEnd?: string;
+  businessDays?: string[];
+  trackActivityDays?: number;
+  category?: string;
+  templateMode?: string;
+  templateId?: string;
+  phishDomain?: string;
+  landingPageId?: string;
+  addClickersToGroup?: string;
+  sendReportEmail?: boolean;
 }): Promise<Campaign> {
   const now = new Date();
+
+  // Set defaults
+  const campaignData = {
+    name: data.name,
+    description: data.description || '',
+    targetCount: data.targetCount || 0,
+    frequency: data.frequency || 'once',
+    startDate: data.startDate,
+    startTime: data.startTime,
+    timezone: data.timezone || 'Europe/Istanbul',
+    sendingMode: data.sendingMode || 'all',
+    spreadDays: data.spreadDays || 3,
+    spreadUnit: data.spreadUnit || 'days',
+    businessHoursStart: data.businessHoursStart || '09:00',
+    businessHoursEnd: data.businessHoursEnd || '17:00',
+    businessDays: data.businessDays || ['mon', 'tue', 'wed', 'thu', 'fri'],
+    trackActivityDays: data.trackActivityDays || 7,
+    category: data.category || 'it',
+    templateMode: data.templateMode || 'random',
+    templateId: data.templateId,
+    phishDomain: data.phishDomain || 'random',
+    landingPageId: data.landingPageId,
+    addClickersToGroup: data.addClickersToGroup,
+    sendReportEmail: data.sendReportEmail !== undefined ? data.sendReportEmail : true,
+  };
 
   if (config.useMemoryDb) {
     const campaign: Campaign = {
       id: generateId(),
-      name: data.name,
-      description: data.description,
+      name: campaignData.name,
+      description: campaignData.description,
+      targetCount: campaignData.targetCount,
+      frequency: campaignData.frequency as any,
+      startDate: campaignData.startDate,
+      startTime: campaignData.startTime,
+      timezone: campaignData.timezone,
+      sendingMode: campaignData.sendingMode as any,
+      spreadDays: campaignData.spreadDays,
+      spreadUnit: campaignData.spreadUnit as any,
+      businessHoursStart: campaignData.businessHoursStart,
+      businessHoursEnd: campaignData.businessHoursEnd,
+      businessDays: campaignData.businessDays,
+      trackActivityDays: campaignData.trackActivityDays,
+      category: campaignData.category,
+      templateMode: campaignData.templateMode as any,
+      templateId: campaignData.templateId,
+      phishDomain: campaignData.phishDomain,
+      landingPageId: campaignData.landingPageId,
+      addClickersToGroup: campaignData.addClickersToGroup,
+      sendReportEmail: campaignData.sendReportEmail,
       status: 'draft',
-      targetCount: data.targetCount,
       createdAt: now,
       updatedAt: now,
     };
@@ -94,10 +193,36 @@ export async function createCampaign(data: {
   if (!p) throw new Error('Database not available');
 
   const result = await p.query(
-    `INSERT INTO campaigns (name, description, target_count)
-     VALUES ($1, $2, $3)
-     RETURNING id, name, description, status, target_count, created_at, updated_at`,
-    [data.name, data.description, data.targetCount]
+    `INSERT INTO campaigns (
+      name, description, target_count, frequency, start_date, start_time, timezone,
+      sending_mode, spread_days, spread_unit, business_hours_start, business_hours_end,
+      business_days, track_activity_days, category, template_mode, template_id,
+      phish_domain, landing_page_id, add_clickers_to_group, send_report_email
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+    RETURNING *`,
+    [
+      campaignData.name,
+      campaignData.description,
+      campaignData.targetCount,
+      campaignData.frequency,
+      campaignData.startDate,
+      campaignData.startTime,
+      campaignData.timezone,
+      campaignData.sendingMode,
+      campaignData.spreadDays,
+      campaignData.spreadUnit,
+      campaignData.businessHoursStart,
+      campaignData.businessHoursEnd,
+      JSON.stringify(campaignData.businessDays),
+      campaignData.trackActivityDays,
+      campaignData.category,
+      campaignData.templateMode,
+      campaignData.templateId || null,
+      campaignData.phishDomain,
+      campaignData.landingPageId || null,
+      campaignData.addClickersToGroup || null,
+      campaignData.sendReportEmail,
+    ]
   );
 
   const row = result.rows[0];
@@ -109,6 +234,26 @@ export async function createCampaign(data: {
     description: row.description,
     status: row.status,
     targetCount: row.target_count,
+    frequency: row.frequency,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    timezone: row.timezone,
+    sendingMode: row.sending_mode,
+    spreadDays: row.spread_days,
+    spreadUnit: row.spread_unit,
+    businessHoursStart: row.business_hours_start,
+    businessHoursEnd: row.business_hours_end,
+    businessDays: JSON.parse(row.business_days || '[]'),
+    trackActivityDays: row.track_activity_days,
+    category: row.category,
+    templateMode: row.template_mode,
+    templateId: row.template_id,
+    phishDomain: row.phish_domain,
+    landingPageId: row.landing_page_id,
+    addClickersToGroup: row.add_clickers_to_group,
+    sendReportEmail: row.send_report_email,
+    nextRunAt: row.next_run_at,
+    lastRunAt: row.last_run_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -163,7 +308,7 @@ export async function updateCampaign(
   const result = await p.query(
     `UPDATE campaigns SET ${updates.join(', ')}
      WHERE id = $${paramIndex} AND status = 'draft'
-     RETURNING id, name, description, status, target_count, created_at, updated_at`,
+     RETURNING *`,
     values
   );
 
@@ -178,6 +323,26 @@ export async function updateCampaign(
     description: row.description,
     status: row.status,
     targetCount: row.target_count,
+    frequency: row.frequency,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    timezone: row.timezone,
+    sendingMode: row.sending_mode,
+    spreadDays: row.spread_days,
+    spreadUnit: row.spread_unit,
+    businessHoursStart: row.business_hours_start,
+    businessHoursEnd: row.business_hours_end,
+    businessDays: JSON.parse(row.business_days || '[]'),
+    trackActivityDays: row.track_activity_days,
+    category: row.category,
+    templateMode: row.template_mode,
+    templateId: row.template_id,
+    phishDomain: row.phish_domain,
+    landingPageId: row.landing_page_id,
+    addClickersToGroup: row.add_clickers_to_group,
+    sendReportEmail: row.send_report_email,
+    nextRunAt: row.next_run_at,
+    lastRunAt: row.last_run_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -234,7 +399,7 @@ export async function startCampaign(id: string): Promise<Campaign | null> {
   const result = await p.query(
     `UPDATE campaigns SET status = 'active', updated_at = NOW()
      WHERE id = $1 AND status = 'draft'
-     RETURNING id, name, description, status, target_count, created_at, updated_at`,
+     RETURNING *`,
     [id]
   );
 
@@ -249,6 +414,26 @@ export async function startCampaign(id: string): Promise<Campaign | null> {
     description: row.description,
     status: row.status,
     targetCount: row.target_count,
+    frequency: row.frequency,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    timezone: row.timezone,
+    sendingMode: row.sending_mode,
+    spreadDays: row.spread_days,
+    spreadUnit: row.spread_unit,
+    businessHoursStart: row.business_hours_start,
+    businessHoursEnd: row.business_hours_end,
+    businessDays: JSON.parse(row.business_days || '[]'),
+    trackActivityDays: row.track_activity_days,
+    category: row.category,
+    templateMode: row.template_mode,
+    templateId: row.template_id,
+    phishDomain: row.phish_domain,
+    landingPageId: row.landing_page_id,
+    addClickersToGroup: row.add_clickers_to_group,
+    sendReportEmail: row.send_report_email,
+    nextRunAt: row.next_run_at,
+    lastRunAt: row.last_run_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -276,7 +461,7 @@ export async function pauseCampaign(id: string): Promise<Campaign | null> {
   const result = await p.query(
     `UPDATE campaigns SET status = 'paused', updated_at = NOW()
      WHERE id = $1 AND status = 'active'
-     RETURNING id, name, description, status, target_count, created_at, updated_at`,
+     RETURNING *`,
     [id]
   );
 
@@ -291,6 +476,26 @@ export async function pauseCampaign(id: string): Promise<Campaign | null> {
     description: row.description,
     status: row.status,
     targetCount: row.target_count,
+    frequency: row.frequency,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    timezone: row.timezone,
+    sendingMode: row.sending_mode,
+    spreadDays: row.spread_days,
+    spreadUnit: row.spread_unit,
+    businessHoursStart: row.business_hours_start,
+    businessHoursEnd: row.business_hours_end,
+    businessDays: JSON.parse(row.business_days || '[]'),
+    trackActivityDays: row.track_activity_days,
+    category: row.category,
+    templateMode: row.template_mode,
+    templateId: row.template_id,
+    phishDomain: row.phish_domain,
+    landingPageId: row.landing_page_id,
+    addClickersToGroup: row.add_clickers_to_group,
+    sendReportEmail: row.send_report_email,
+    nextRunAt: row.next_run_at,
+    lastRunAt: row.last_run_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -318,7 +523,7 @@ export async function resumeCampaign(id: string): Promise<Campaign | null> {
   const result = await p.query(
     `UPDATE campaigns SET status = 'active', updated_at = NOW()
      WHERE id = $1 AND status = 'paused'
-     RETURNING id, name, description, status, target_count, created_at, updated_at`,
+     RETURNING *`,
     [id]
   );
 
@@ -333,6 +538,26 @@ export async function resumeCampaign(id: string): Promise<Campaign | null> {
     description: row.description,
     status: row.status,
     targetCount: row.target_count,
+    frequency: row.frequency,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    timezone: row.timezone,
+    sendingMode: row.sending_mode,
+    spreadDays: row.spread_days,
+    spreadUnit: row.spread_unit,
+    businessHoursStart: row.business_hours_start,
+    businessHoursEnd: row.business_hours_end,
+    businessDays: JSON.parse(row.business_days || '[]'),
+    trackActivityDays: row.track_activity_days,
+    category: row.category,
+    templateMode: row.template_mode,
+    templateId: row.template_id,
+    phishDomain: row.phish_domain,
+    landingPageId: row.landing_page_id,
+    addClickersToGroup: row.add_clickers_to_group,
+    sendReportEmail: row.send_report_email,
+    nextRunAt: row.next_run_at,
+    lastRunAt: row.last_run_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -360,7 +585,7 @@ export async function completeCampaign(id: string): Promise<Campaign | null> {
   const result = await p.query(
     `UPDATE campaigns SET status = 'completed', updated_at = NOW()
      WHERE id = $1 AND status IN ('active', 'paused')
-     RETURNING id, name, description, status, target_count, created_at, updated_at`,
+     RETURNING *`,
     [id]
   );
 
@@ -375,6 +600,26 @@ export async function completeCampaign(id: string): Promise<Campaign | null> {
     description: row.description,
     status: row.status,
     targetCount: row.target_count,
+    frequency: row.frequency,
+    startDate: row.start_date,
+    startTime: row.start_time,
+    timezone: row.timezone,
+    sendingMode: row.sending_mode,
+    spreadDays: row.spread_days,
+    spreadUnit: row.spread_unit,
+    businessHoursStart: row.business_hours_start,
+    businessHoursEnd: row.business_hours_end,
+    businessDays: JSON.parse(row.business_days || '[]'),
+    trackActivityDays: row.track_activity_days,
+    category: row.category,
+    templateMode: row.template_mode,
+    templateId: row.template_id,
+    phishDomain: row.phish_domain,
+    landingPageId: row.landing_page_id,
+    addClickersToGroup: row.add_clickers_to_group,
+    sendReportEmail: row.send_report_email,
+    nextRunAt: row.next_run_at,
+    lastRunAt: row.last_run_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

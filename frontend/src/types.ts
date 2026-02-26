@@ -3,7 +3,6 @@ export type EventType = 'clicked' | 'submitted';
 export type RecipientStatus = 'pending' | 'sent' | 'clicked' | 'submitted' | 'failed';
 export type Frequency = 'once' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
 export type SendingMode = 'all' | 'spread';
-export type DifficultyRating = 1 | 2 | 3 | 4 | 5;
 
 export interface Campaign {
   id: string;
@@ -118,6 +117,8 @@ export interface LdapSyncResult {
 
 export interface CampaignFormData {
   name: string;
+  description?: string;
+  targetCount?: number;
   targetGroupId: string;
   frequency: Frequency;
   startDate: string;
@@ -132,10 +133,9 @@ export interface CampaignFormData {
   trackActivityDays: number;
   category: string;
   templateMode: 'random' | 'specific';
-  templateId: string;
-  difficultyRating: DifficultyRating | null;
+  templateId?: string;
   phishDomain: string;
-  landingPageId: string;
-  addClickersToGroup: string;
+  landingPageId?: string;
+  addClickersToGroup?: string;
   sendReportEmail: boolean;
 }

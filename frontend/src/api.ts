@@ -8,6 +8,7 @@ import type {
   DashboardStats,
   LdapUser,
   LdapSyncResult,
+  CampaignFormData,
 } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -39,7 +40,7 @@ export const api = {
 
   getCampaign: (id: string) => request<CampaignDetail>(`/campaigns/${id}`),
 
-  createCampaign: (data: { name: string; description: string; targetCount: number }) =>
+  createCampaign: (data: Partial<CampaignFormData> & { name: string }) =>
     request<Campaign>('/campaigns', {
       method: 'POST',
       body: JSON.stringify(data),

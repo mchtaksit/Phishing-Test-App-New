@@ -3,6 +3,10 @@
 // ============================================
 
 export type CampaignStatus = 'draft' | 'active' | 'completed' | 'paused';
+export type Frequency = 'once' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
+export type SendingMode = 'all' | 'spread';
+export type SpreadUnit = 'hours' | 'days';
+export type TemplateMode = 'random' | 'specific';
 
 export interface Campaign {
   id: string;
@@ -10,6 +14,37 @@ export interface Campaign {
   description: string;
   status: CampaignStatus;
   targetCount: number;
+
+  // Scheduling
+  frequency: Frequency;
+  startDate?: string;
+  startTime?: string;
+  timezone: string;
+
+  // Sending configuration
+  sendingMode: SendingMode;
+  spreadDays: number;
+  spreadUnit: SpreadUnit;
+  businessHoursStart: string;
+  businessHoursEnd: string;
+  businessDays: string[];
+  trackActivityDays: number;
+
+  // Email template configuration
+  category: string;
+  templateMode: TemplateMode;
+  templateId?: string;
+
+  // Phishing configuration
+  phishDomain: string;
+  landingPageId?: string;
+  addClickersToGroup?: string;
+  sendReportEmail: boolean;
+
+  // Scheduling metadata
+  nextRunAt?: Date;
+  lastRunAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
